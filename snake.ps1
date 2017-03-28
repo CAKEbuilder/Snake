@@ -18,7 +18,6 @@ else {
 $boardWidth = 32
 $playArea = $boardWidth - 2   # - 1 for each of the vertical sides of the board (always 2)
 $borderTopBottom = "#" * $boardWidth
-$borderSides = "#" + (" " * $playArea) + "#"
 $frameCounter = 1   # would be cool to calculate FPS too
 $playerInputX = 1   # we init at 1 instead of 0 to start the game with the snake moving right
 $playerInputY = 0
@@ -102,16 +101,6 @@ function board {
     # for debugging
     $frameCounter
 
-    # init/reset the arrays that store the x/y position for each tail
-    $global:tailsPosX = @()
-    $global:tailsPosY = @()
-
-    # set up the tailsPosX/Y dynamically
-    for($cc=0;$cc -le $tailMax;$cc++) {
-        $global:tailsPosX += $global:tailPosX[$cc]
-        $global:tailsPosY += $global:tailPosY[$cc]
-    }
-  
     # score and tail count
     write-host "score:" $score
     write-host "number of tails:" $global:numOfTails
@@ -172,7 +161,7 @@ function board {
                 $tmp += "apple"
             }
             # set the tail if needed. this is in its own if deatched from the head/apple check in case the head and tail0 are in the same row. before, when doing if/elseif/elseif, if the head was in the row, we used $m=0 to assign the head, then $m++. we couldn't set $tail[0] when $m=0 if the head was in this row as well. this solves that issue.
-            if(($i -eq $global:tailsPosY[$m]) -and ($tmp -notcontains "tail$m")) {
+            if(($i -eq $global:tailPosY[$m]) -and ($tmp -notcontains "tail$m")) {
                 # use "o" as the tail symbol, except for the very last tail (purley for asthetic purposes)
                 if($m -eq ($global:numOfTails - 1)) {
                     $tmpSymbol += "t"
@@ -180,7 +169,7 @@ function board {
                 else {
                     $tmpSymbol += "o"
                 }
-                $tmpPosX += $global:tailsPosX[$m]
+                $tmpPosX += $global:tailPosX[$m]
                 $tmp += "tail$m"
             }
             # if we haven't set anything here, $null. this used to be the else in the if/elseif/elseif. now we check this at the end of it all, since we broke up the steps into multiple ifs.
@@ -224,6 +213,8 @@ function board {
             }
         }
 
+        $breakpoint=1
+
 
         # if the objs are empty
         for($z=0;$z -le $tailMax;$z++) {
@@ -234,22 +225,28 @@ function board {
         }
 
         # now that the objs are set, define the distances between each
-        # this section is $tailMax + 1
         # init/reset the array, then populate it
         $distance = @()
-        for($gg=0;$gg -le ($tailMax + 1);$gg++) {   # heh, gg
+        for($gg=0;$gg -le ($playArea);$gg++) {   # heh, gg
             $distance += $null
         }
 
         # get the distances between each object that we're drawing in the same row
-        for($t=0;$t -le ($tailMax + 1);$t++) {
-            # set the distance. we do it slightly differently for the first and last distances
+        for($t=0;$t -le ($playArea);$t++) {
+            # we do it slightly differently for the first and last distances
+            
             # first
-            if($t -eq 0) { $distance[$t] = $objPosX[0] }
+            if($t -eq 0) {
+                $distance[$t] = $objPosX[0]
+            }
             # last
-            elseif($t -eq ($tailMax + 1)) { $distance[$t] = $playArea - $objPosX[($tailMax)] }
+            elseif($t -eq ($playArea)) {
+                $distance[$t] = $playArea - $objPosX[($tailMax)]
+            }
             # everything else
-            else { $distance[$t] = $objPosX[$t] - $objPosX[$t-1] }
+            else {
+                $distance[$t] = $objPosX[$t] - $objPosX[$t-1]
+            }
 
             # check for problems
             if($distance[$t] -eq 0) {
@@ -263,25 +260,27 @@ function board {
         }
 
 
-        # draw a blank row if none of the objects are set
-        if(!$obj) {
-            "#" + (" " * $playArea) + "#$i"
-        }
-        # if there is >0 objects in the row, draw it/them
         # this is the heart of the script. write objects in the row, if any exist
-        else {
-            # create a variable that we can append to
-            $output = "#"
-            for($ii=0;$ii -le $tailMax;$ii++) {
-                $output += (" " * ($distance[$ii] - 1) + $objSymbol[$ii])
-            }
-
-            # add the last line
-            $output += (" " * ($distance[($tailMax + 1)])) + "#"
-            
-            # write the line
-            $output
+        #   remember that " " is now an object, where in previous versions, only head/apple/tail were objects.
+        #   we will store the information to write in a variable, $output. once it is complete, we'll draw it on the screen
+        $output = "#"
+        for($ii=0;$ii -le $tailMax;$ii++) {
+            $output += (" " * ($distance[$ii] - 1) + $objSymbol[$ii])
         }
+
+        # add the last piece of the line
+        # if an object is in the furthest right space in the playArea, then just end the play area with the side border. no need to draw a space.
+        # this is +1 because we use the width of the playArea + the one "#" used for the left border
+        if ($output.Length -eq ($playArea + 1)) {
+             $output += "#"
+        }
+        # for every other case where an object is not in the furthest right position, draw spaces until we hit the border, then draw the border
+        else {
+            $output += (" " * ($distance[($playArea)])) + "#"
+        }
+
+        # write the line
+        $output
     }
 
   
@@ -295,7 +294,7 @@ function board {
     # detect game over
     #  if the player hits the tail. this can only happen on tail[3] or higher
     for($a=3;$a -le $tailMax;$a++) {
-        if(($x -eq $global:tailsPosX[$a]) -and ($y -eq $global:tailsPosY[$a])) {
+        if(($x -eq $global:tailPosX[$a]) -and ($y -eq $global:tailPosY[$a])) {
             write-host "game over - you hit your tail!"
             exit
         }
