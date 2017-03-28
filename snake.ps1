@@ -146,7 +146,7 @@ function board {
 
 
         # set tmp values for every object that exists in the current row. afterwards, we'll sort this array and determine the order of appearance of each object
-        for($m=0;$m -le $tailMax;$m++) {
+        for($m=0;$m -le $playArea;$m++) {
             # set the head if needed
             # we parse the entire array for the object. eg, if the array doesn't already contain the object we're attempting to set, then set the object.
             if(($i -eq $y) -and ($tmp -notcontains "head")) {
@@ -313,7 +313,7 @@ function board {
 
 
 # play
-# get user input, draw the board, move the player
+# get user input, draw the board, move the objects
 while(1 -eq 1) {
 
     # apple
@@ -454,9 +454,6 @@ while(1 -eq 1) {
     # I don't really get this
     $global:tailPosY[0] = $playerPosY
     $playerPosY = $playerPosY + $playerInputY
-
-
-
   
     clear
     board -x $playerPosX -y $playerPosY
