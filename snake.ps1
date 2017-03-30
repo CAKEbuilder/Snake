@@ -18,6 +18,7 @@ else {
 $boardWidth = 32
 $playArea = $boardWidth - 2   # - 1 for each of the vertical sides of the board (always 2)
 $borderTopBottom = "#" * $boardWidth
+$buffer = 3   # this number is equal to the number of rows we use at the top of the screen before drawing the board. eg, we currently show the frame count, score, and number of tails. we use this buffer to calculate the offset of the board and other elements of the game that appear after these header rows
 $frameCounter = 1   # would be cool to calculate FPS too
 $playerInputX = 1   # we init at 1 instead of 0 to start the game with the snake moving right
 $playerInputY = 0
@@ -65,6 +66,17 @@ for($bb=0;$bb -le $tailMax;$bb++) {
 }
 
 
+# new way of writing the output to the screen. now we don't use Clear-Host or Write-Host. we now Write-Buffer, which updates each available space instead of whiping the entire console screen and re-writing everything
+function Write-Buffer ([string] $str, [int] $x = 0, [int] $y = 0) {
+      if($x -ge 0 -and $y -ge 0 -and $x -le [Console]::WindowWidth -and $y -le [Console]::WindowHeight) {
+            $saveY = [console]::CursorTop
+            $offY = [console]::WindowTop       
+            [console]::setcursorposition($x,$offY+$y)
+            Write-Host -Object $str -NoNewline
+            [console]::setcursorposition(0,$saveY)
+      }
+}
+
 # for debugging. we can call this function to manually set a desired number of tails.
 #   usage: "setTails -tails 6", would set the tail count to 6
 function setTails {
@@ -99,15 +111,17 @@ function board {
     param([int]$x, [int]$y)
 
     # for debugging
-    $frameCounter
-
-    # score and tail count
-    write-host "score:" $score
-    write-host "number of tails:" $global:numOfTails
-
+    # anything in this section should be used to define the $buffer
+    # ---------
+    Write-Buffer $frameCounter 0 0
+    $tempString = "score:" + $score
+    Write-Buffer $tempString 0 1
+    $tempString = "number of tails:" + $global:numOfTails
+    Write-Buffer $tempString 0 2
+    # ---------
 
     # draw board top
-    $borderTopBottom
+    Write-Buffer $borderTopBottom 0 ($buffer)
 
     # draw the board, inserting the head/tail/apple as needed
     for($i=1;$i -le $playArea;$i++) {
@@ -123,6 +137,7 @@ function board {
             $applePosY = 0
 
             # spawn the next tail, if it doesn't already exist
+            # note to self - you could check for this without using a for() by indexing the first 0, learning that index, then setting the value to 1. would reduce overhead on the for()s a bit
             for($u=3;$u -le $tailMax;$u++) {
                 if($global:tailExists[$u] -eq 0) {
                     $global:tailExists[$u] = 1
@@ -134,11 +149,8 @@ function board {
 
         # reset the objs and tmps
         # initialize/reset $obj
-        $obj = @()
-        for($dd=0;$dd -le $tailMax;$dd++) {   # double d's. heh
-            $obj += $null
-        }
-        
+        $obj = @($null) * ($tailMax + 1)
+       
         $tmp = @()
         $tmpSymbol = @()
         $tmpPosX = @()
@@ -280,12 +292,13 @@ function board {
         }
 
         # write the line
-        $output
+        Write-Buffer $output 0 ($i + 3)   # we add to $i here because the first 3 lines are used to show other things ($frameCounter, the score, and number of tails).
+
     }
 
   
     # draw board bottom
-    $borderTopBottom
+    Write-Buffer $borderTopBottom 0 34
 
     # debug
     # update the numOfTails
@@ -295,13 +308,13 @@ function board {
     #  if the player hits the tail. this can only happen on tail[3] or higher
     for($a=3;$a -le $tailMax;$a++) {
         if(($x -eq $global:tailPosX[$a]) -and ($y -eq $global:tailPosY[$a])) {
-            write-host "game over - you hit your tail!"
+            write-buffer "game over - you hit your tail!" 0 40   # 40 is chosen at random. I just happen to know that it is below the board. should use one of the defined board size variables to set this instead...
             exit
         }
     }
     #  if the player hits the game border
     if(($x -eq 0) -or ($x -eq ($playArea + 1)) -or ($y -eq 0) -or ($y -eq ($playArea + 1))) {
-        write-host "game over - you hit the game border!"
+        write-buffer "game over - you hit the game border!" 0 40
         exit
     }
 
@@ -313,6 +326,7 @@ function board {
 
 
 # play
+clear
 # get user input, draw the board, move the objects
 while(1 -eq 1) {
 
@@ -455,10 +469,10 @@ while(1 -eq 1) {
     $global:tailPosY[0] = $playerPosY
     $playerPosY = $playerPosY + $playerInputY
   
-    clear
+    #clear
     board -x $playerPosX -y $playerPosY
     #Sleep -m 100
-    Sleep -m 20
+    #Sleep -m 20
     $frameCounter++
 
 }
