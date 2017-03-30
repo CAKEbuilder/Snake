@@ -1,8 +1,46 @@
 
 # definitions
 
-$debug = 0
-# if debug = 1 (on), pressing the spacebar will enter debug and allow us to poke around.
+$debug                       			= 0
+$boardWidth              			= 32
+$playArea                  			= $boardWidth - 2   # - 1 for each of the vertical sides of the board (always 2)
+$borderTopBottom				= "#" * $boardWidth
+$buffer								= 3   # this number is equal to the number of rows we use at the top of the screen before drawing the board. eg, we currently show the frame count, score, and number of tails. we use this buffer to calculate the offset of the board and other elements of the game that appear after these header rows
+$frameCounter 					= 1   # would be cool to calculate FPS too
+$playerInputX 					= 1   # we init at 1 instead of 0 to start the game with the snake moving right
+$playerInputY 					= 0
+$playerPosX 						= 8
+$playerPosY 						= 1
+$applePosX 						= 0
+$applePosY 						= 0
+$applePointValue 				= 5
+$tailMax 								= 20   # define the max count of tails that can possibly be spawned. this is used to dynamically determine pretty much everything now; distance, objects, array lengths, ect. the greater this value is, the more things need to loop, slowing down the speed of the game. this is the biggest problem that exists currently. we ultimately need to support the max number of tails that can theoretically fit in the play space, and have it not impact performance.
+$global:score 						= 0
+$global:numOfTails 				= 3
+$global:appleIsSpawned 		= 0
+$global:canMoveLeft 			= $false   # since we init the game with the snake moving right
+$global:canMoveRight 			= $true
+$global:canMoveUp 				= $true
+$global:canMoveDown 			= $true
+$global:tailExists 					= @()
+<#
+$global:tailPosX 					= @()
+$global:tailPosY 					= @()
+for($aa=0;$aa -le $tailMax;$aa++) {   # define the length of these arrays
+    $global:tailPosX += $null
+    $global:tailPosY += $null
+}
+#>
+$global:tailPosX = @($null) * $tailMax
+$global:tailPosY = @($null) * $tailMax
+$global:tailPosX[0] 				= $playerPosX - 1   # [0] is the first tail position
+$global:tailPosY[0] 				= $playerPosY
+$global:tailPosX[1] 				= $global:tailPosX[0] - 1
+$global:tailPosY[1] 				= $global:tailPosY[0]
+$global:tailPosX[2] 				= $global:tailPosX[1] - 1
+$global:tailPosY[2] 				= $global:tailPosY[1]
+
+# 1 = on. pressing the spacebar will enter debug and allow us to poke around.
 if($debug -eq 1) {
     Set-PSBreakpoint -Variable breakHere
 }
@@ -15,42 +53,8 @@ else {
         Remove-PSBreakpoint -Id 2
     }
 }
-$boardWidth = 32
-$playArea = $boardWidth - 2   # - 1 for each of the vertical sides of the board (always 2)
-$borderTopBottom = "#" * $boardWidth
-$buffer = 3   # this number is equal to the number of rows we use at the top of the screen before drawing the board. eg, we currently show the frame count, score, and number of tails. we use this buffer to calculate the offset of the board and other elements of the game that appear after these header rows
-$frameCounter = 1   # would be cool to calculate FPS too
-$playerInputX = 1   # we init at 1 instead of 0 to start the game with the snake moving right
-$playerInputY = 0
-$playerPosX = 8
-$playerPosY = 1
-$applePosX = 0
-$applePosY = 0
-$applePointValue = 5
-$global:score = 0
-$global:numOfTails = 3
-$global:appleIsSpawned = 0
-$global:canMoveLeft = $false   # since we init the game with the snake moving right
-$global:canMoveRight = $true
-$global:canMoveUp = $true
-$global:canMoveDown = $true
-# define the max count of tails that can possibly be spawned. this is used to dynamically determine pretty much everything now; distance, objects, array lengths, ect. the greater this value is, the more things need to loop, slowing down the speed of the game. this is the biggest problem that exists currently. we ultimately need to support the max number of tails that can theoretically fit in the play space, and have it not impact performance.
-$tailMax = 20
-$global:tailExists = @()
-$global:tailPosX = @()
-$global:tailPosY = @()
-# define the length of these arrays
-for($aa=0;$aa -le $tailMax;$aa++) {
-    $global:tailPosX += $null
-    $global:tailPosY += $null
-}
-# [0] is the first tail position
-$global:tailPosX[0] = $playerPosX - 1
-$global:tailPosY[0] = $playerPosY
-$global:tailPosX[1] = $global:tailPosX[0] - 1
-$global:tailPosY[1] = $global:tailPosY[0]
-$global:tailPosX[2] = $global:tailPosX[1] - 1
-$global:tailPosY[2] = $global:tailPosY[1]
+
+
 # $global:tailExists keeps track of which tail positions exist
 #   tails 0-2 always exist. every other tail needs to be disabled at start, and enabled with each apple eaten.
 #   the first three positions are always 1, then we dynamically add 0 as we expand $tailMax
@@ -239,12 +243,12 @@ function board {
         # now that the objs are set, define the distances between each
         # init/reset the array, then populate it
         $distance = @()
-        for($gg=0;$gg -le ($playArea);$gg++) {   # heh, gg
+        for($gg=0;$gg -le ($playArea);$gg++) {
             $distance += $null
         }
 
         # get the distances between each object that we're drawing in the same row
-        for($t=0;$t -le ($playArea);$t++) {
+        for($t=0;$t -le $playArea;$t++) {
             # we do it slightly differently for the first and last distances
             
             # first
