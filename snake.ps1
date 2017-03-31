@@ -1,44 +1,35 @@
 
 # definitions
 
-$debug                       			= 0
-$boardWidth              			= 32
-$playArea                  			= $boardWidth - 2   # - 1 for each of the vertical sides of the board (always 2)
-$borderTopBottom				= "#" * $boardWidth
-$buffer								= 3   # this number is equal to the number of rows we use at the top of the screen before drawing the board. eg, we currently show the frame count, score, and number of tails. we use this buffer to calculate the offset of the board and other elements of the game that appear after these header rows
-$frameCounter 					= 1   # would be cool to calculate FPS too
-$playerInputX 					= 1   # we init at 1 instead of 0 to start the game with the snake moving right
-$playerInputY 					= 0
-$playerPosX 						= 8
-$playerPosY 						= 1
-$applePosX 						= 0
-$applePosY 						= 0
-$applePointValue 				= 5
-$tailMax 								= 20   # define the max count of tails that can possibly be spawned. this is used to dynamically determine pretty much everything now; distance, objects, array lengths, ect. the greater this value is, the more things need to loop, slowing down the speed of the game. this is the biggest problem that exists currently. we ultimately need to support the max number of tails that can theoretically fit in the play space, and have it not impact performance.
-$global:score 						= 0
-$global:numOfTails 				= 3
-$global:appleIsSpawned 		= 0
-$global:canMoveLeft 			= $false   # since we init the game with the snake moving right
-$global:canMoveRight 			= $true
-$global:canMoveUp 				= $true
-$global:canMoveDown 			= $true
-$global:tailExists 					= @()
-<#
-$global:tailPosX 					= @()
-$global:tailPosY 					= @()
-for($aa=0;$aa -le $tailMax;$aa++) {   # define the length of these arrays
-    $global:tailPosX += $null
-    $global:tailPosY += $null
-}
-#>
-$global:tailPosX = @($null) * $tailMax
-$global:tailPosY = @($null) * $tailMax
-$global:tailPosX[0] 				= $playerPosX - 1   # [0] is the first tail position
-$global:tailPosY[0] 				= $playerPosY
-$global:tailPosX[1] 				= $global:tailPosX[0] - 1
-$global:tailPosY[1] 				= $global:tailPosY[0]
-$global:tailPosX[2] 				= $global:tailPosX[1] - 1
-$global:tailPosY[2] 				= $global:tailPosY[1]
+$debug                   = 0
+$boardWidth              = 32
+$playArea                = $boardWidth - 2   # - 1 for each of the vertical sides of the board (always 2)
+$borderTopBottom	     = "#" * $boardWidth
+$frameCounter 		     = 1   # would be cool to calculate FPS too
+$playerInputX 		     = 1   # we init at 1 instead of 0 to start the game with the snake moving right
+$playerInputY 		     = 0
+$playerPosX 		     = 8
+$playerPosY 		     = 1
+$applePosX 			     = 0
+$applePosY 			     = 0
+$applePointValue 	     = 5
+$tailMax 			     = 20   # define the max count of tails that can possibly be spawned. this is used to dynamically determine pretty much everything now; distance, objects, array lengths, ect. the greater this value is, the more things need to loop, slowing down the speed of the game. this is the biggest problem that exists currently. we ultimately need to support the max number of tails that can theoretically fit in the play space, and have it not impact performance.
+$global:score 		     = 0
+$global:numOfTails 	     = 3
+$global:appleIsSpawned   = 0
+$global:canMoveLeft 	 = $false   # since we init the game with the snake moving right
+$global:canMoveRight 	 = $true
+$global:canMoveUp 		 = $true
+$global:canMoveDown 	 = $true
+$global:tailExists 		 = @()   # keeps track of which tails exist
+$global:tailPosX         = @($null) * ($tailMax + 1)
+$global:tailPosY         = @($null) * ($tailMax + 1)
+$global:tailPosX[0] 	 = $playerPosX - 1   # [0] is the first tail position
+$global:tailPosY[0]      = $playerPosY
+$global:tailPosX[1]      = $global:tailPosX[0] - 1
+$global:tailPosY[1]      = $global:tailPosY[0]
+$global:tailPosX[2] 	 = $global:tailPosX[1] - 1
+$global:tailPosY[2] 	 = $global:tailPosY[1]
 
 # 1 = on. pressing the spacebar will enter debug and allow us to poke around.
 if($debug -eq 1) {
@@ -47,17 +38,11 @@ if($debug -eq 1) {
 else {
     # remove the breakpoint, if it exists
     if(Get-PSBreakpoint) {
-        # need to clean this up
-        Remove-PSBreakpoint -Id 0
-        Remove-PSBreakpoint -Id 1
-        Remove-PSBreakpoint -Id 2
+        Get-PSBreakpoint | Remove-PSBreakpoint
     }
 }
 
-
-# $global:tailExists keeps track of which tail positions exist
-#   tails 0-2 always exist. every other tail needs to be disabled at start, and enabled with each apple eaten.
-#   the first three positions are always 1, then we dynamically add 0 as we expand $tailMax
+# setup the tails. tails 0-2 always exist. every other tail needs to be disabled at start, and enabled with each apple eaten.
 for($bb=0;$bb -le $tailMax;$bb++) {
     if($bb -le 2) {
         $global:tailExists += 1
@@ -69,8 +54,7 @@ for($bb=0;$bb -le $tailMax;$bb++) {
     }
 }
 
-
-# new way of writing the output to the screen. now we don't use Clear-Host or Write-Host. we now Write-Buffer, which updates each available space instead of whiping the entire console screen and re-writing everything
+# write output to the screen. used to Write/Clear-Host. this prevents the board from "flashing"
 function Write-Buffer ([string] $str, [int] $x = 0, [int] $y = 0) {
       if($x -ge 0 -and $y -ge 0 -and $x -le [Console]::WindowWidth -and $y -le [Console]::WindowHeight) {
             $saveY = [console]::CursorTop
@@ -81,8 +65,7 @@ function Write-Buffer ([string] $str, [int] $x = 0, [int] $y = 0) {
       }
 }
 
-# for debugging. we can call this function to manually set a desired number of tails.
-#   usage: "setTails -tails 6", would set the tail count to 6
+# for debugging. we can call this function to manually set a desired number of tails. eg: "setTails -tails 6", would set the tail count to 6
 function setTails {
     param([int]$tails)
     "adding " + $tails + " tails to the snake."
@@ -96,8 +79,7 @@ function setTails {
     }
 }
 
-# get the number of tails that are enabled so we can inform the player how well they're doing
-# we also use this (-1) to determine if we're on the last tail. currently only to set the last tail's symbol to something other than "o"
+# check how many tails are enabled. use this for reporting and other things like determining which tail is the last one currently enabled
 function numOfTails {
     for($ll=0;$ll -le ($global:tailExists.Length);$ll++) {
         if($global:tailExists[$ll] -eq 0) {
@@ -107,8 +89,7 @@ function numOfTails {
     }
 }
 
-
-# function to draw the board
+# draws the board
 function board {
     
     # receive the newest x/y positions of the head
@@ -124,47 +105,46 @@ function board {
     Write-Buffer $tempString 0 2
     # ---------
 
+    # offset where we begin drawing the board. since above we are setting three header elements, set $buffer = 3. we'll draw the board below the buffer.
+    $buffer = 3
+
     # draw board top
     Write-Buffer $borderTopBottom 0 ($buffer)
 
-    # draw the board, inserting the head/tail/apple as needed
+    # draw the board loop (checks for point score, determines object postions, ect)
     for($i=1;$i -le $playArea;$i++) {
 
-        # score if player gets the apple
+        # check if the player eats the apple
         if(($x -eq $applePosX) -and ($y -eq $applePosY)) {
             # increase the score
             $global:score = $global:score + $applePointValue
 
-            # handle the apple
+            # disable the apple
             $global:appleIsSpawned = 0
             $applePosX = 0
             $applePosY = 0
 
-            # spawn the next tail, if it doesn't already exist
+            # spawn the next available tail
             # note to self - you could check for this without using a for() by indexing the first 0, learning that index, then setting the value to 1. would reduce overhead on the for()s a bit
             for($u=3;$u -le $tailMax;$u++) {
                 if($global:tailExists[$u] -eq 0) {
                     $global:tailExists[$u] = 1
-                    # break once we set the first available 0 to 1. otherwise, we'd enable all the tails on one score of the apple
+                    # break once we flip the first available tail from 0 to 1
                     break
                 }
             }
         }
 
-        # reset the objs and tmps
-        # initialize/reset $obj
-        $obj = @($null) * ($tailMax + 1)
-       
+        # init/reset tmp and obj. I really don't need to be setting tmps. get rid of this and try writing directly to objs instead.
         $tmp = @()
         $tmpSymbol = @()
         $tmpPosX = @()
-
-
+        $obj = @($null) * ($tailMax + 1)
 
         # set tmp values for every object that exists in the current row. afterwards, we'll sort this array and determine the order of appearance of each object
         for($m=0;$m -le $playArea;$m++) {
             # set the head if needed
-            # we parse the entire array for the object. eg, if the array doesn't already contain the object we're attempting to set, then set the object.
+            # we parse the entire array for the object. if the array doesn't already contain the object we're attempting to set, then set the object.
             if(($i -eq $y) -and ($tmp -notcontains "head")) {
                 $tmpSymbol += "X"
                 $tmpPosX += $x
@@ -188,7 +168,7 @@ function board {
                 $tmpPosX += $global:tailPosX[$m]
                 $tmp += "tail$m"
             }
-            # if we haven't set anything here, $null. this used to be the else in the if/elseif/elseif. now we check this at the end of it all, since we broke up the steps into multiple ifs.
+            # if we haven't set anything, $null
             if(!$tmp[$m]) {
                 $tmpSymbol += $null
                 $tmpPosX += 0
@@ -196,9 +176,8 @@ function board {
             }
         }
 
-
-        # need to order the tmps now so we can assign them.
-        # init/reset the array, populate it, then sort it
+        # init/reset the array, populate it, then sort it. determines the order of objects as they appear from left to right.
+        # $a is probably redundant since $tmpPosX is already an array. should get rid of this
         $a = @()
         for($ee=0;$ee -le $tailMax;$ee++) {
             $a += $tmpPosX[$ee]
@@ -229,9 +208,6 @@ function board {
             }
         }
 
-        $breakpoint=1
-
-
         # if the objs are empty
         for($z=0;$z -le $tailMax;$z++) {
             if(!$obj[$z]) {
@@ -248,9 +224,10 @@ function board {
         }
 
         # get the distances between each object that we're drawing in the same row
+        # don't think we need distances now that spaces are defined as objects. now we just write each object to the screen in order
         for($t=0;$t -le $playArea;$t++) {
-            # we do it slightly differently for the first and last distances
             
+            # (we do things slightly differently for the first and last distances)            
             # first
             if($t -eq 0) {
                 $distance[$t] = $objPosX[0]
@@ -276,9 +253,8 @@ function board {
         }
 
 
-        # this is the heart of the script. write objects in the row, if any exist
-        #   remember that " " is now an object, where in previous versions, only head/apple/tail were objects.
-        #   we will store the information to write in a variable, $output. once it is complete, we'll draw it on the screen
+        # this is where the magic happens. write objects in the row, if any exist
+        # append to $output until it is built, then write it
         $output = "#"
         for($ii=0;$ii -le $tailMax;$ii++) {
             $output += (" " * ($distance[$ii] - 1) + $objSymbol[$ii])
@@ -300,42 +276,35 @@ function board {
 
     }
 
-  
     # draw board bottom
     Write-Buffer $borderTopBottom 0 34
 
-    # debug
     # update the numOfTails
     numOfTails
 
-    # detect game over
-    #  if the player hits the tail. this can only happen on tail[3] or higher
+    # detect game over (hit tail or border)
+    # hit the tail (this is only possible while tail[3] or higher is enabled)
     for($a=3;$a -le $tailMax;$a++) {
         if(($x -eq $global:tailPosX[$a]) -and ($y -eq $global:tailPosY[$a])) {
             write-buffer "game over - you hit your tail!" 0 40   # 40 is chosen at random. I just happen to know that it is below the board. should use one of the defined board size variables to set this instead...
             exit
         }
     }
-    #  if the player hits the game border
+    # hit the border
     if(($x -eq 0) -or ($x -eq ($playArea + 1)) -or ($y -eq 0) -or ($y -eq ($playArea + 1))) {
         write-buffer "game over - you hit the game border!" 0 40
         exit
     }
-
 }
 
-
-
-
-
-
-# play
+# clean the screen once before we begin playing
 clear
-# get user input, draw the board, move the objects
+
+# play! get user input, update the position of objects, call the board drawing function using new player coords
 while(1 -eq 1) {
 
     # apple
-    # randomly find an unused location on the board to spawn in, if the apple is not yet spawned
+    # spawn the apple in a random, unused location
     if($global:appleIsSpawned -eq 0) {
         $applePosX = (Get-Random -min 1 -max 30)
         $applePosY = (Get-Random -min 1 -max 30)
@@ -358,7 +327,6 @@ while(1 -eq 1) {
                 $applePosY = $applePosY + 1
             }
         }
-
         # don't let the apple spawn in any of the tail positions. if it tries to, move it
         for($jj=0;$jj -le $tailMax;$jj++) {
             if($applePosX -eq $global:tailPosX[$jj]) {
@@ -383,7 +351,6 @@ while(1 -eq 1) {
     # if we're here, then we've spawned the apple. make it edible
     $global:appleIsSpawned = 1
     }
-
 
     # get the player's input
     if ([console]::KeyAvailable) {
@@ -434,7 +401,7 @@ while(1 -eq 1) {
                     $global:canMoveUp = $false
                 }
             }
-            # allows us to enter debugging (only when $debug = 1)
+            # allows us to enter debugging when $debug = 1
             Spacebar {
                 $breakHere = 1
             }
@@ -444,7 +411,7 @@ while(1 -eq 1) {
     # move the player
     # we do some stuff differently on the very first frame
     if($frameCounter -ne 1) {
-        # set the position of the tails (in reverse order), if the tail exists, except for on frame one (when the game initializes)
+        # update the position of each tail in reverse order, if the tail exists, except for on frame one
         for($hh=$tailMax;$hh -ge 3;$hh--) {
             if($global:tailExists[$hh]) {
                 $global:tailPosX[$hh] = $global:tailPosX[($hh - 1)]
@@ -452,7 +419,6 @@ while(1 -eq 1) {
             }
         }
             
-        # these tails always exists
         # tails 0-2 always exist
         for($kk=2;$kk -ge 0;$kk--) {
             if($kk -ne 0) {
@@ -473,10 +439,8 @@ while(1 -eq 1) {
     $global:tailPosY[0] = $playerPosY
     $playerPosY = $playerPosY + $playerInputY
   
-    #clear
     board -x $playerPosX -y $playerPosY
-    #Sleep -m 100
-    #Sleep -m 20
+
     $frameCounter++
 
 }
