@@ -178,25 +178,21 @@ function board {
 
         # init/reset the array, populate it, then sort it. determines the order of objects as they appear from left to right.
         # $a is probably redundant since $tmpPosX is already an array. should get rid of this
-        $a = @()
+        $tmpArray = @()
         for($ee=0;$ee -le $tailMax;$ee++) {
-            $a += $tmpPosX[$ee]
+            $tmpArray += $tmpPosX[$ee]
         }
         
-        $a = $a | Sort-Object
+        $tmpArray = $tmpArray | Sort-Object
 
         # define the official objs, in order, now that we're done with the tmps
         $objPosX = @()
         for($n=0;$n -le $tailMax;$n++) {
-            $objPosX += $a[$n]
+            $objPosX += $tmpArray[$n]
         }
 
         # init/reset the array, then populate it
-        $objSymbol = @()
-        for($ff=0;$ff -le $tailMax;$ff++) {
-            $objSymbol += $null
-        }
-        
+        $objSymbol = @($null) * ($tailMax + 1)
 
         # set up each obj and objSymbol, now that we have the order
         for($r=0;$r -le $tailMax;$r++) {
