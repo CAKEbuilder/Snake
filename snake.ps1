@@ -99,9 +99,9 @@ function board {
     # anything in this section should be used to define the $buffer
     # ---------
     Write-Buffer $frameCounter 0 0
-    $tempString = "score:" + $score
+    $tempString = "score: " + $score
     Write-Buffer $tempString 0 1
-    $tempString = "number of tails:" + $global:numOfTails
+    $tempString = "number of tails: " + $global:numOfTails
     Write-Buffer $tempString 0 2
     # ---------
 
@@ -123,23 +123,18 @@ function board {
             $global:appleIsSpawned = 0
             $applePosX = 0
             $applePosY = 0
+            
+            # spawn the next available tail by flipping the first 0 we find to a 1
+            $b = $global:tailExists.IndexOf(0)
+            $global:tailExists[$b] = 1
 
-            # spawn the next available tail
-            # note to self - you could check for this without using a for() by indexing the first 0, learning that index, then setting the value to 1. would reduce overhead on the for()s a bit
-            for($u=3;$u -le $tailMax;$u++) {
-                if($global:tailExists[$u] -eq 0) {
-                    $global:tailExists[$u] = 1
-                    # break once we flip the first available tail from 0 to 1
-                    break
-                }
-            }
         }
 
         # init/reset tmp and obj. I really don't need to be setting tmps. get rid of this and try writing directly to objs instead.
         $tmp = @()
         $tmpSymbol = @()
         $tmpPosX = @()
-        $obj = @($null) * ($tailMax + 1)
+        $obj = @($null) * $playArea
 
         # set tmp values for every object that exists in the current row. afterwards, we'll sort this array and determine the order of appearance of each object
         for($m=0;$m -le $playArea;$m++) {
@@ -177,12 +172,13 @@ function board {
         }
 
         # init/reset the array, populate it, then sort it. determines the order of objects as they appear from left to right.
-        # $a is probably redundant since $tmpPosX is already an array. should get rid of this
+        # $tmpArray is probably redundant since $tmpPosX is already an array. should get rid of this
         $tmpArray = @()
         for($ee=0;$ee -le $tailMax;$ee++) {
             $tmpArray += $tmpPosX[$ee]
         }
-        
+
+        # note: once you fix the incorrect references to tailMax with playArea, I believe you could eliminate the for() above and do "$tmpArray = ($tmpPosX | Sort-Object)"
         $tmpArray = $tmpArray | Sort-Object
 
         # define the official objs, in order, now that we're done with the tmps
@@ -215,7 +211,7 @@ function board {
         # now that the objs are set, define the distances between each
         # init/reset the array, then populate it
         $distance = @()
-        for($gg=0;$gg -le ($playArea);$gg++) {
+        for($gg=0;$gg -le $playArea;$gg++) {
             $distance += $null
         }
 
@@ -226,7 +222,7 @@ function board {
             # (we do things slightly differently for the first and last distances)            
             # first
             if($t -eq 0) {
-                $distance[$t] = $objPosX[0]
+                $distance[0] = $objPosX[0]
             }
             # last
             elseif($t -eq ($playArea)) {
@@ -246,6 +242,7 @@ function board {
             if($distance[$t] -lt 0) {
                 $distance[$t] = $distance[$t] * (-1)
             }
+
         }
 
 
@@ -269,6 +266,10 @@ function board {
 
         # write the line
         Write-Buffer $output 0 ($i + 3)   # we add to $i here because the first 3 lines are used to show other things ($frameCounter, the score, and number of tails).
+
+        # _dev the script is working, but we're using bad math all over the place. things rely on tailMax when they should rely on playArea.
+        # let's fix stuff in the working script before trying to reinvent the wheel
+        $breakHere = 1
 
     }
 
