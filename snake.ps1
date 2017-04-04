@@ -8,8 +8,8 @@ $borderTopBottom	     = "#" * $boardWidth
 $frameCounter 		     = 1   # would be cool to calculate FPS too
 $playerInputX 		     = 1   # we init at 1 instead of 0 to start the game with the snake moving right
 $playerInputY 		     = 0
-$playerPosX 		     = 8
-$playerPosY 		     = 1
+$headPosX 		         = 8
+$headPosY 		         = 1
 $applePosX 			     = 0
 $applePosY 			     = 0
 $applePointValue 	     = 5
@@ -21,36 +21,28 @@ $global:canMoveLeft 	 = $false   # since we init the game with the snake moving 
 $global:canMoveRight 	 = $true
 $global:canMoveUp 		 = $true
 $global:canMoveDown 	 = $true
-$global:tailExists 		 = @()   # keeps track of which tails exist
-$global:tailPosX         = @($null) * ($tailMax + 1)
-$global:tailPosY         = @($null) * ($tailMax + 1)
-$global:tailPosX[0] 	 = $playerPosX - 1   # [0] is the first tail position
-$global:tailPosY[0]      = $playerPosY
+$global:tailExists       = @(0) * $tailMax   # keeps track of which tails exist
+$global:tailExists[0]    = 1   # init the first three tails
+$global:tailExists[1]    = 1
+$global:tailExists[2]    = 1
+$global:tailPosX         = @(0) * $tailMax
+$global:tailPosY         = @(0) * $tailMax
+$global:tailPosX[0] 	 = $headPosX - 1   # init the first three tail positions
+$global:tailPosY[0]      = $headPosY
 $global:tailPosX[1]      = $global:tailPosX[0] - 1
 $global:tailPosY[1]      = $global:tailPosY[0]
 $global:tailPosX[2] 	 = $global:tailPosX[1] - 1
 $global:tailPosY[2] 	 = $global:tailPosY[1]
 
-# 1 = on. pressing the spacebar will enter debug and allow us to poke around.
+
+# 1 = on. set "$breakHere = 1" anywhere you'd like to break
 if($debug -eq 1) {
     Set-PSBreakpoint -Variable breakHere
 }
 else {
-    # remove the breakpoint, if it exists
+    # remove breakpoints, if any exists
     if(Get-PSBreakpoint) {
         Get-PSBreakpoint | Remove-PSBreakpoint
-    }
-}
-
-# setup the tails. tails 0-2 always exist. every other tail needs to be disabled at start, and enabled with each apple eaten.
-for($bb=0;$bb -le $tailMax;$bb++) {
-    if($bb -le 2) {
-        $global:tailExists += 1
-    }
-    else {
-        $global:tailExists += 0
-        $global:tailPosX[$bb] = 0
-        $global:tailPosY[$bb] = 0
     }
 }
 
@@ -69,24 +61,22 @@ function Write-Buffer ([string] $str, [int] $x = 0, [int] $y = 0) {
 function setTails {
     param([int]$tails)
     "adding " + $tails + " tails to the snake."
-    for($mm=0;$mm -le $tailMax;$mm++) {
-        if($mm -le $tails) {
-            $global:tailExists[$mm] = 1
+    for($c=0;$c -le $tailMax;$c++) {
+        if($c -le $tails) {
+            $global:tailExists[$c] = 1
         }
         else {
-            $global:tailExists[$mm] = 0
+            $global:tailExists[$c] = 0
         }
     }
 }
 
 # check how many tails are enabled. use this for reporting and other things like determining which tail is the last one currently enabled
 function numOfTails {
-    for($ll=0;$ll -le ($global:tailExists.Length);$ll++) {
-        if($global:tailExists[$ll] -eq 0) {
-            $global:numOfTails = $ll
-            break
-        }
-    }
+    
+    # $global:tailExists.IndexOf(0) will return the position of the first 0, which happens to be equal to the total number of tails that are enabled
+    $global:numOfTails = $global:tailExists.IndexOf(0)
+
 }
 
 # draws the board
@@ -103,17 +93,18 @@ function board {
     Write-Buffer $tempString 0 1
     $tempString = "number of tails: " + $global:numOfTails
     Write-Buffer $tempString 0 2
+    $tempString = "headPosX: " + $headPosX
+    Write-Buffer $tempString 0 3
+    $tempString = "headPosY: " + $headPosY
+    Write-Buffer $tempString 0 4
     # ---------
 
-    # offset where we begin drawing the board. since above we are setting three header elements, set $offset = 3. we'll draw the board below the buffer.
-    $offset = 3
-
-    # draw board top
-    Write-Buffer $borderTopBottom 0 ($offset)
+    # offset where we begin drawing the board. since above we are setting three header elements, set $offset = 3. we'll start drawing the board below this offset
+    $offset = 5
 
     # draw the board loop (checks for point score, determines object postions, ect)
     # evaluate each row of the board, one at a time
-    for($i=1;$i -lt $playArea;$i++) {
+    for($i=0;$i -le $playArea;$i++) {
 
         # check if the player eats the apple
         if(($x -eq $applePosX) -and ($y -eq $applePosY)) {
@@ -135,7 +126,11 @@ function board {
         # this is a new method for determining which objects exist in a row and drawing them. the old way was difficult to understand and redundant. this takes much less effort to accomplish the same goal
 
         # create a temp array for all objects in the row
-        $objectsInRow = @(" ") * $playArea   # instead of $null, use " ". we'll just overwrite spaces with any objects we find as we find them
+        $objectsInRow = @(" ") * ($playArea + 2)   # instead of $null, use " ". we'll just overwrite spaces with any objects we find as we find them
+
+        # pad the row with the game border
+        $objectsInRow[0] = "#"
+        $objectsInRow[31] = "#"
 
         # if an object exists in this row (Y), place it in the array using the object's X position (overwritting spaces as needed)
 
@@ -149,24 +144,28 @@ function board {
         }
 
         # add any tails that exist
-        for($m=0;$m -lt $playArea;$m++) {
-            if($global:tailPosY[$m] -eq $i) {
-                $objectsInRow[$global:tailPosX[$m]] = "o"
+        for($d=0;$d -lt $playArea;$d++) {
+            if($global:tailPosY[$d] -eq $i) {
+                $objectsInRow[$global:tailPosX[$d]] = "o"
             }
         }
 
-        # pad the row with the game border
-        $output = "#"
-        $output += -join $objectsInRow   # "-join" prints the array on one line (horizontally)
-        $output += "#"
+        # save the formatted row as $output
+        $output = -join $objectsInRow   # "-join" prints the array on one line (horizontally)
 
-        # write the row
+
+        # if we're on the first row, set the output to the top border
+        if($i -eq 0) {
+            $output = $borderTopBottom
+        }
+
+        # write the output
         Write-Buffer $output 0 ($i + $offset)
-
+        
     }
 
     # draw board bottom now that we're done looping through the playArea
-    Write-Buffer $borderTopBottom 0 ($playArea + $offset)
+    Write-Buffer $borderTopBottom 0 ($playArea + $offset + 1)   # + 1 because of the top border
 
     # update the numOfTails
     numOfTails
@@ -179,6 +178,7 @@ function board {
             exit
         }
     }
+
     # hit the border
     if(($x -eq 0) -or ($x -eq ($playArea + 1)) -or ($y -eq 0) -or ($y -eq ($playArea + 1))) {
         write-buffer "game over - you hit the game border!" 0 ($playArea + 10)
@@ -217,8 +217,8 @@ while(1 -eq 1) {
             }
         }
         # don't let the apple spawn in any of the tail positions. if it tries to, move it
-        for($jj=0;$jj -le $tailMax;$jj++) {
-            if($applePosX -eq $global:tailPosX[$jj]) {
+        for($e=0;$e -le $tailMax;$e++) {
+            if($applePosX -eq $global:tailPosX[$e]) {
                 if($applePosX -eq $playArea) {
                     $applePosX = $applePosX - 1
                 }
@@ -226,7 +226,7 @@ while(1 -eq 1) {
                     $applePosX = $applePosX + 1
                 }
             }
-            if($applePosY -eq $global:tailPosY[$jj]) {
+            if($applePosY -eq $global:tailPosY[$e]) {
                 if($applePosY -eq $playArea) {
                     $applePosY = $applePosY - 1
                 }
@@ -252,47 +252,43 @@ while(1 -eq 1) {
                     # prevent diagonal movement and allow the continuous movement in the last known direction
                     $playerInputX=0
                     # free movement in all directions, besides the opposite
-                    $global:canMoveUp = $true
-                    $global:canMoveLeft = $true
+                    $global:canMoveUp    = $true
+                    $global:canMoveLeft  = $true
                     $global:canMoveRight = $true
                     # restrict movement in the opposite direction
-                    $global:canMoveDown = $false
+                    $global:canMoveDown  = $false
 
                 }
             }
             LeftArrow {
                 if($global:canMoveLeft) {
-                    $playerInputX=(-1)
-                    $playerInputY=0
-                    $global:canMoveLeft = $true
-                    $global:canMoveUp = $true
-                    $global:canMoveDown = $true
+                    $playerInputX        = (-1)
+                    $playerInputY        = 0
+                    $global:canMoveLeft  = $true
+                    $global:canMoveUp    = $true
+                    $global:canMoveDown  = $true
                     $global:canMoveRight = $false
                 }
             }
             RightArrow {
                 if($global:canMoveRight) {
-                    $playerInputX=1
-                    $playerInputY=0
+                    $playerInputX        = 1
+                    $playerInputY        = 0
                     $global:canMoveRight = $true
-                    $global:canMoveUp = $true
-                    $global:canMoveDown = $true
-                    $global:canMoveLeft = $false
+                    $global:canMoveUp    = $true
+                    $global:canMoveDown  = $true
+                    $global:canMoveLeft  = $false
                 }
             }
             DownArrow {
                 if($global:canMoveDown) {
-                    $playerInputY=1
-                    $playerInputX=0
+                    $playerInputY        = 1
+                    $playerInputX        = 0
                     $global:canMoveRight = $true
-                    $global:canMoveLeft = $true
-                    $global:canMoveDown = $true
-                    $global:canMoveUp = $false
+                    $global:canMoveLeft  = $true
+                    $global:canMoveDown  = $true
+                    $global:canMoveUp    = $false
                 }
-            }
-            # allows us to enter debugging when $debug = 1
-            Spacebar {
-                $breakHere = 1
             }
         }
     } 
@@ -301,36 +297,36 @@ while(1 -eq 1) {
     # we do some stuff differently on the very first frame
     if($frameCounter -ne 1) {
         # update the position of each tail in reverse order, if the tail exists, except for on frame one
-        for($hh=$tailMax;$hh -ge 3;$hh--) {
-            if($global:tailExists[$hh]) {
-                $global:tailPosX[$hh] = $global:tailPosX[($hh - 1)]
-                $global:tailPosY[$hh] = $global:tailPosY[($hh - 1)]
+        for($f=$tailMax;$f -ge 3;$f--) {
+            if($global:tailExists[$f]) {
+                $global:tailPosX[$f] = $global:tailPosX[($f - 1)]
+                $global:tailPosY[$f] = $global:tailPosY[($f - 1)]
             }
         }
             
         # tails 0-2 always exist
-        for($kk=2;$kk -ge 0;$kk--) {
-            if($kk -ne 0) {
-                $global:tailPosX[$kk] = $global:tailPosX[($kk-1)]
-                $global:tailPosY[$kk] = $global:tailPosY[($kk-1)]
+        for($g=2;$g -ge 0;$g--) {
+            if($g -ne 0) {
+                $global:tailPosX[$g] = $global:tailPosX[($g-1)]
+                $global:tailPosY[$g] = $global:tailPosY[($g-1)]
             }
             else {
-                $global:tailPosX[0] = $playerPosX
-                $global:tailPosY[0] = $playerPosY
+                $global:tailPosX[0] = $headPosX
+                $global:tailPosY[0] = $headPosY
             }
         }
 
         # move the player. we skip this on the first frame since we handle this elsewhere
-        $playerPosX = $playerPosX + $playerInputX
+        $headPosX = $headPosX + $playerInputX
     }
     
     # I don't really get this
-    $global:tailPosY[0] = $playerPosY
-    $playerPosY = $playerPosY + $playerInputY
+    $global:tailPosY[0] = $headPosY
+    $headPosY = $headPosY + $playerInputY
   
-    board -x $playerPosX -y $playerPosY
+    board -x $headPosX -y $headPosY
 
-    # _dev new version plays way too fast
+    # the new version plays way too fast
     sleep -Milliseconds 50
     $frameCounter++
 
