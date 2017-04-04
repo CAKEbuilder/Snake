@@ -15,7 +15,6 @@ $applePosY 			     = 0
 $applePointValue 	     = 5
 $tailMax 			     = ($playArea * $playArea)   # set the array length to the max theoretical tails that can be drawn on the board
 $global:score 		     = 0
-$global:numOfTails 	     = 3
 $global:appleIsSpawned   = 0
 $global:canMoveLeft 	 = $false   # since we init the game with the snake moving right
 $global:canMoveRight 	 = $true
@@ -33,6 +32,7 @@ $global:tailPosX[1]      = $global:tailPosX[0] - 1
 $global:tailPosY[1]      = $global:tailPosY[0]
 $global:tailPosX[2] 	 = $global:tailPosX[1] - 1
 $global:tailPosY[2] 	 = $global:tailPosY[1]
+$global:numOfTails       = $global:tailExists.IndexOf(0)
 
 
 # 1 = on. set "$breakHere = 1" anywhere you'd like to break
@@ -55,28 +55,6 @@ function Write-Buffer ([string] $str, [int] $x = 0, [int] $y = 0) {
             Write-Host -Object $str -NoNewline
             [console]::setcursorposition(0,$saveY)
       }
-}
-
-# for debugging. we can call this function to manually set a desired number of tails. eg: "setTails -tails 6", would set the tail count to 6
-function setTails {
-    param([int]$tails)
-    "adding " + $tails + " tails to the snake."
-    for($c=0;$c -le $tailMax;$c++) {
-        if($c -le $tails) {
-            $global:tailExists[$c] = 1
-        }
-        else {
-            $global:tailExists[$c] = 0
-        }
-    }
-}
-
-# check how many tails are enabled. use this for reporting and other things like determining which tail is the last one currently enabled
-function numOfTails {
-    
-    # $global:tailExists.IndexOf(0) will return the position of the first 0, which happens to be equal to the total number of tails that are enabled
-    $global:numOfTails = $global:tailExists.IndexOf(0)
-
 }
 
 # draws the board
@@ -126,13 +104,13 @@ function board {
         # this is a new method for determining which objects exist in a row and drawing them. the old way was difficult to understand and redundant. this takes much less effort to accomplish the same goal
 
         # create a temp array for all objects in the row
-        $objectsInRow = @(" ") * ($playArea + 2)   # instead of $null, use " ". we'll just overwrite spaces with any objects we find as we find them
+        $objectsInRow = @(" ") * ($playArea + 2)   # instead of $null, use " ". we'll just overwrite spaces with any objects we find as we find them. +2 to accomodate the left and right border padding
 
         # pad the row with the game border
         $objectsInRow[0] = "#"
         $objectsInRow[31] = "#"
 
-        # if an object exists in this row (Y), place it in the array using the object's X position (overwritting spaces as needed)
+        # if an object exists in the current row (Y), place it in the array (row) using the object's X position (overwritting spaces as needed)
 
         # add the head, if it exists
         if($y -eq $i) {
@@ -151,8 +129,7 @@ function board {
         }
 
         # save the formatted row as $output
-        $output = -join $objectsInRow   # "-join" prints the array on one line (horizontally)
-
+        $output = -join $objectsInRow   # "-join" prints the array on one line
 
         # if we're on the first row, set the output to the top border
         if($i -eq 0) {
@@ -166,9 +143,6 @@ function board {
 
     # draw board bottom now that we're done looping through the playArea
     Write-Buffer $borderTopBottom 0 ($playArea + $offset + 1)   # + 1 because of the top border
-
-    # update the numOfTails
-    numOfTails
 
     # detect game over (hit tail or border)
     # hit the tail (this is only possible while tail[3] or higher is enabled)
@@ -184,6 +158,9 @@ function board {
         write-buffer "game over - you hit the game border!" 0 ($playArea + 10)
         exit
     }
+
+    # update the number of tails
+    $global:numOfTails = $global:tailExists.IndexOf(0)
 }
 
 # clean the screen once before we begin playing
@@ -197,8 +174,55 @@ while(1 -eq 1) {
     if($global:appleIsSpawned -eq 0) {
         $applePosX = (Get-Random -min 1 -max 30)
         $applePosY = (Get-Random -min 1 -max 30)
-        # you need to put the verification of the apple being in the player/tail pos' in a loop. eg, if the apple spawns in the head and you move it, verify that you didn't move it into a tail pos. also check if the apple spawns in a tail and you move it, that its not in the head pos.
-        # { ---------
+        
+        # _dev improving the apple spawn code
+        # loop until we've corrected the value
+        $locationIsEmpty = 0
+        while($locationIsEmpty -eq 0) {
+            if(($applePosX -eq $x) -and ($applePosY -eq $y)) {
+                clear
+                $tempString = "oops. tried spawning the apple in the head. would need to move the apple"
+                write-buffer $tempString 0 40
+                write-host "found head"
+                write-host ""
+                write-host "x: " $x
+                write-host "applePosX: " $applePosX
+                write-host "y: " $y
+                write-host "applePosY: " $applePosY
+                pause
+            }
+            # i should be able to index X and use the index value to check y
+            elseif($global:tailPosX -contains $applePosX) {
+                clear
+                $tempIndex = $global:tailPosX.IndexOf($applePosX)
+                write-host "found tailX"
+                write-host ""
+                write-host "tailPosX: " $global:tailPosX
+                write-host "applePosX: " $applePosX
+                write-host "tailPosY: " $global:tailPosY
+                write-host "applePosY: " $applePosY
+                pause
+                if($applePosY -eq $global:tailPosY[$tempIndex]) {
+                    clear
+                    $tempString = "oops. tried spawning the apple in the tail. would need to move the apple"
+                    write-buffer $tempString 0 40
+                    write-host "found tailY"
+                    write-host ""
+                    write-host "tailPosX: " $global:tailPosX
+                    write-host "applePosX: " $applePosX
+                    write-host "tailPosY: " $global:tailPosY
+                    write-host "applePosY: " $applePosY
+                    pause
+                }
+            }
+            else {
+                $locationIsEmpty = 1
+            }
+
+        }
+
+
+        <#
         # don't let the apple spawn in the player's pos. if it tries to, move it
         if($applePosX -eq $x) {
             if($applePosX -eq $playArea) {
@@ -235,7 +259,7 @@ while(1 -eq 1) {
                 }
             }
         }
-        # } ---------
+        #>
 
     # if we're here, then we've spawned the apple. make it edible
     $global:appleIsSpawned = 1
