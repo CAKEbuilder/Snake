@@ -13,7 +13,7 @@ $playerPosY 		     = 1
 $applePosX 			     = 0
 $applePosY 			     = 0
 $applePointValue 	     = 5
-$tailMax 			     = 20   # define the max count of tails that can possibly be spawned. this is used to dynamically determine pretty much everything now; distance, objects, array lengths, ect. the greater this value is, the more things need to loop, slowing down the speed of the game. this is the biggest problem that exists currently. we ultimately need to support the max number of tails that can theoretically fit in the play space, and have it not impact performance.
+$tailMax 			     = ($playArea * $playArea)   # set the array length to the max theoretical tails that can be drawn on the board
 $global:score 		     = 0
 $global:numOfTails 	     = 3
 $global:appleIsSpawned   = 0
@@ -96,7 +96,7 @@ function board {
     param([int]$x, [int]$y)
 
     # for debugging
-    # anything in this section should be used to define the $buffer
+    # anything in this section should be used to define the $offset
     # ---------
     Write-Buffer $frameCounter 0 0
     $tempString = "score: " + $score
@@ -105,14 +105,15 @@ function board {
     Write-Buffer $tempString 0 2
     # ---------
 
-    # offset where we begin drawing the board. since above we are setting three header elements, set $buffer = 3. we'll draw the board below the buffer.
-    $buffer = 3
+    # offset where we begin drawing the board. since above we are setting three header elements, set $offset = 3. we'll draw the board below the buffer.
+    $offset = 3
 
     # draw board top
-    Write-Buffer $borderTopBottom 0 ($buffer)
+    Write-Buffer $borderTopBottom 0 ($offset)
 
     # draw the board loop (checks for point score, determines object postions, ect)
-    for($i=1;$i -le $playArea;$i++) {
+    # evaluate each row of the board, one at a time
+    for($i=1;$i -lt $playArea;$i++) {
 
         # check if the player eats the apple
         if(($x -eq $applePosX) -and ($y -eq $applePosY)) {
@@ -130,151 +131,42 @@ function board {
 
         }
 
-        # init/reset tmp and obj. I really don't need to be setting tmps. get rid of this and try writing directly to objs instead.
-        $tmp = @()
-        $tmpSymbol = @()
-        $tmpPosX = @()
-        $obj = @($null) * $playArea
 
-        # set tmp values for every object that exists in the current row. afterwards, we'll sort this array and determine the order of appearance of each object
-        for($m=0;$m -le $playArea;$m++) {
-            # set the head if needed
-            # we parse the entire array for the object. if the array doesn't already contain the object we're attempting to set, then set the object.
-            if(($i -eq $y) -and ($tmp -notcontains "head")) {
-                $tmpSymbol += "X"
-                $tmpPosX += $x
-                $tmp += "head"
-            }
-            # set the apple if needed
-            elseif(($i -eq $applePosY) -and ($tmp -notcontains "apple")) {
-                $tmpSymbol += "@"
-                $tmpPosX += $applePosX
-                $tmp += "apple"
-            }
-            # set the tail if needed. this is in its own if deatched from the head/apple check in case the head and tail0 are in the same row. before, when doing if/elseif/elseif, if the head was in the row, we used $m=0 to assign the head, then $m++. we couldn't set $tail[0] when $m=0 if the head was in this row as well. this solves that issue.
-            if(($i -eq $global:tailPosY[$m]) -and ($tmp -notcontains "tail$m")) {
-                # use "o" as the tail symbol, except for the very last tail (purley for asthetic purposes)
-                if($m -eq ($global:numOfTails - 1)) {
-                    $tmpSymbol += "t"
-                }
-                else {
-                    $tmpSymbol += "o"
-                }
-                $tmpPosX += $global:tailPosX[$m]
-                $tmp += "tail$m"
-            }
-            # if we haven't set anything, $null
-            if(!$tmp[$m]) {
-                $tmpSymbol += $null
-                $tmpPosX += 0
-                $tmp += $null
+        # this is a new method for determining which objects exist in a row and drawing them. the old way was difficult to understand and redundant. this takes much less effort to accomplish the same goal
+
+        # create a temp array for all objects in the row
+        $objectsInRow = @(" ") * $playArea   # instead of $null, use " ". we'll just overwrite spaces with any objects we find as we find them
+
+        # if an object exists in this row (Y), place it in the array using the object's X position (overwritting spaces as needed)
+
+        # add the head, if it exists
+        if($y -eq $i) {
+            $objectsInRow[$x] = "X"
+        }
+        # add the apple, if it exists
+        if($applePosY -eq $i) {
+            $objectsInRow[$applePosX] = "@"
+        }
+
+        # add any tails that exist
+        for($m=0;$m -lt $playArea;$m++) {
+            if($global:tailPosY[$m] -eq $i) {
+                $objectsInRow[$global:tailPosX[$m]] = "o"
             }
         }
 
-        # init/reset the array, populate it, then sort it. determines the order of objects as they appear from left to right.
-        # $tmpArray is probably redundant since $tmpPosX is already an array. should get rid of this
-        $tmpArray = @()
-        for($ee=0;$ee -le $tailMax;$ee++) {
-            $tmpArray += $tmpPosX[$ee]
-        }
-
-        # note: once you fix the incorrect references to tailMax with playArea, I believe you could eliminate the for() above and do "$tmpArray = ($tmpPosX | Sort-Object)"
-        $tmpArray = $tmpArray | Sort-Object
-
-        # define the official objs, in order, now that we're done with the tmps
-        $objPosX = @()
-        for($n=0;$n -le $tailMax;$n++) {
-            $objPosX += $tmpArray[$n]
-        }
-
-        # init/reset the array, then populate it
-        $objSymbol = @($null) * ($tailMax + 1)
-
-        # set up each obj and objSymbol, now that we have the order
-        for($r=0;$r -le $tailMax;$r++) {
-            for($s=0;$s -le $tailMax;$s++) {
-                if($objPosX[$s] -eq $tmpPosX[$r]) {
-                    $obj[$s] = $tmp[$r]
-                    $objSymbol[$s] = $tmpSymbol[$r]
-                }
-            }
-        }
-
-        # if the objs are empty
-        for($z=0;$z -le $tailMax;$z++) {
-            if(!$obj[$z]) {
-                $objSymbol[$z] = $null
-                $objPosX += 0
-            }
-        }
-
-        # now that the objs are set, define the distances between each
-        # init/reset the array, then populate it
-        $distance = @()
-        for($gg=0;$gg -le $playArea;$gg++) {
-            $distance += $null
-        }
-
-        # get the distances between each object that we're drawing in the same row
-        # don't think we need distances now that spaces are defined as objects. now we just write each object to the screen in order
-        for($t=0;$t -le $playArea;$t++) {
-            
-            # (we do things slightly differently for the first and last distances)            
-            # first
-            if($t -eq 0) {
-                $distance[0] = $objPosX[0]
-            }
-            # last
-            elseif($t -eq ($playArea)) {
-                $distance[$t] = $playArea - $objPosX[($tailMax)]
-            }
-            # everything else
-            else {
-                $distance[$t] = $objPosX[$t] - $objPosX[$t-1]
-            }
-
-            # check for problems
-            if($distance[$t] -eq 0) {
-                $distance[$t] = 1
-            }
-
-            # if the result is negative, convert to positive by multiplying it by -1 (you had to look this up hahah what a loser)
-            if($distance[$t] -lt 0) {
-                $distance[$t] = $distance[$t] * (-1)
-            }
-
-        }
-
-
-        # this is where the magic happens. write objects in the row, if any exist
-        # append to $output until it is built, then write it
+        # pad the row with the game border
         $output = "#"
-        for($ii=0;$ii -le $tailMax;$ii++) {
-            $output += (" " * ($distance[$ii] - 1) + $objSymbol[$ii])
-        }
+        $output += -join $objectsInRow   # "-join" prints the array on one line (horizontally)
+        $output += "#"
 
-        # add the last piece of the line
-        # if an object is in the furthest right space in the playArea, then just end the play area with the side border. no need to draw a space.
-        # this is +1 because we use the width of the playArea + the one "#" used for the left border
-        if ($output.Length -eq ($playArea + 1)) {
-             $output += "#"
-        }
-        # for every other case where an object is not in the furthest right position, draw spaces until we hit the border, then draw the border
-        else {
-            $output += (" " * ($distance[($playArea)])) + "#"
-        }
-
-        # write the line
-        Write-Buffer $output 0 ($i + 3)   # we add to $i here because the first 3 lines are used to show other things ($frameCounter, the score, and number of tails).
-
-        # _dev the script is working, but we're using bad math all over the place. things rely on tailMax when they should rely on playArea.
-        # let's fix stuff in the working script before trying to reinvent the wheel
-        $breakHere = 1
+        # write the row
+        Write-Buffer $output 0 ($i + $offset)
 
     }
 
-    # draw board bottom
-    Write-Buffer $borderTopBottom 0 34
+    # draw board bottom now that we're done looping through the playArea
+    Write-Buffer $borderTopBottom 0 ($playArea + $offset)
 
     # update the numOfTails
     numOfTails
@@ -283,13 +175,13 @@ function board {
     # hit the tail (this is only possible while tail[3] or higher is enabled)
     for($a=3;$a -le $tailMax;$a++) {
         if(($x -eq $global:tailPosX[$a]) -and ($y -eq $global:tailPosY[$a])) {
-            write-buffer "game over - you hit your tail!" 0 40   # 40 is chosen at random. I just happen to know that it is below the board. should use one of the defined board size variables to set this instead...
+            write-buffer "game over - you hit your tail!" 0 ($playArea + 10)   # I chose this value at random. I just happen to know that it is below the board. should use one of the defined board size variables to set this instead...
             exit
         }
     }
     # hit the border
     if(($x -eq 0) -or ($x -eq ($playArea + 1)) -or ($y -eq 0) -or ($y -eq ($playArea + 1))) {
-        write-buffer "game over - you hit the game border!" 0 40
+        write-buffer "game over - you hit the game border!" 0 ($playArea + 10)
         exit
     }
 }
@@ -438,6 +330,9 @@ while(1 -eq 1) {
   
     board -x $playerPosX -y $playerPosY
 
+    # _dev new version plays way too fast
+    sleep -Milliseconds 50
     $frameCounter++
+
 
 }
