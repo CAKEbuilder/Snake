@@ -1,8 +1,15 @@
 
-# definitions
+# bugs (keep it brief)
+#   -being told I hit my tail when it doesn't look like I am.
+#   -apple still spawning in tail
 
-$debug                   = 0
-$boardWidth              = 32
+
+# customizable values
+$debug                   = 1
+$boardWidth              = 20
+$speed                   = 50   # controls sleep by milliseconds. the larger the number, the slower the speed
+
+# definitions
 $playArea                = $boardWidth - 2   # - 1 for each of the vertical sides of the board (always 2)
 $borderTopBottom	     = "#" * $boardWidth
 $frameCounter 		     = 1   # would be cool to calculate FPS too
@@ -86,6 +93,7 @@ function board {
 
         # check if the player eats the apple
         if(($x -eq $applePosX) -and ($y -eq $applePosY)) {
+           
             # increase the score
             $global:score = $global:score + $applePointValue
 
@@ -100,7 +108,6 @@ function board {
 
         }
 
-
         # this is a new method for determining which objects exist in a row and drawing them. the old way was difficult to understand and redundant. this takes much less effort to accomplish the same goal
 
         # create a temp array for all objects in the row
@@ -108,7 +115,7 @@ function board {
 
         # pad the row with the game border
         $objectsInRow[0] = "#"
-        $objectsInRow[31] = "#"
+        $objectsInRow[$playArea+1] = "#"
 
         # if an object exists in the current row (Y), place it in the array (row) using the object's X position (overwritting spaces as needed)
 
@@ -122,7 +129,7 @@ function board {
         }
 
         # add any tails that exist
-        for($d=0;$d -lt $playArea;$d++) {
+        for($d=0;$d -lt $tailMax;$d++) {
             if($global:tailPosY[$d] -eq $i) {
                 $objectsInRow[$global:tailPosX[$d]] = "o"
             }
@@ -161,6 +168,7 @@ function board {
 
     # update the number of tails
     $global:numOfTails = $global:tailExists.IndexOf(0)
+
 }
 
 # clean the screen once before we begin playing
@@ -172,95 +180,38 @@ while(1 -eq 1) {
     # apple
     # spawn the apple in a random, unused location
     if($global:appleIsSpawned -eq 0) {
-        $applePosX = (Get-Random -min 1 -max 30)
-        $applePosY = (Get-Random -min 1 -max 30)
-        
-        # _dev improving the apple spawn code
-        # loop until we've corrected the value
-        $locationIsEmpty = 0
-        while($locationIsEmpty -eq 0) {
-            if(($applePosX -eq $x) -and ($applePosY -eq $y)) {
-                clear
-                $tempString = "oops. tried spawning the apple in the head. would need to move the apple"
-                write-buffer $tempString 0 40
-                write-host "found head"
-                write-host ""
-                write-host "x: " $x
-                write-host "applePosX: " $applePosX
-                write-host "y: " $y
-                write-host "applePosY: " $applePosY
-                pause
+       
+        # loop until we've found an empty location
+        $locationIsEmpty = $false
+        while($locationIsEmpty -eq $false) {
+
+            $applePosX = (Get-Random -min 1 -max $playArea)
+            $applePosY = (Get-Random -min 1 -max $playArea)
+
+            # moving this into the while. xPositions was originaly developed incorrectly, using headPosX. need to use applePosX ya genius... moving here since applePosX needs to be set first            
+            # find where headPosX exists in the tailPosX array. we'll use these values to check the matching Y coords
+            $xPositions = (0..($global:tailPosX.Count-1)) | where {$global:tailPosX[$_] -eq $applePosX}
+
+            if(($applePosX -eq $headPosX) -and ($applePosY -eq $headPosY)) {
             }
-            # i should be able to index X and use the index value to check y
-            elseif($global:tailPosX -contains $applePosX) {
-                clear
-                $tempIndex = $global:tailPosX.IndexOf($applePosX)
-                write-host "found tailX"
-                write-host ""
-                write-host "tailPosX: " $global:tailPosX
-                write-host "applePosX: " $applePosX
-                write-host "tailPosY: " $global:tailPosY
-                write-host "applePosY: " $applePosY
-                pause
-                if($applePosY -eq $global:tailPosY[$tempIndex]) {
-                    clear
-                    $tempString = "oops. tried spawning the apple in the tail. would need to move the apple"
-                    write-buffer $tempString 0 40
-                    write-host "found tailY"
-                    write-host ""
-                    write-host "tailPosX: " $global:tailPosX
-                    write-host "applePosX: " $applePosX
-                    write-host "tailPosY: " $global:tailPosY
-                    write-host "applePosY: " $applePosY
-                    pause
+            # if $xPositions contains at least one value, then some tailPosX values match applePosX. check the corresponding Y values
+            elseif($xPositions.Count -gt 0) {
+                # check each tailPosY for values paired with tailPosX
+                foreach($pos in $xPositions) {
+                    if($applePosY -eq $global:tailPosY[$pos]) {
+                        # don't need anything here. should write the inside of the foreach() differently
+                    }
+                    else {
+                        $locationIsEmpty = $true
+                    }
                 }
             }
             else {
-                $locationIsEmpty = 1
-            }
-
-        }
-
-
-        <#
-        # don't let the apple spawn in the player's pos. if it tries to, move it
-        if($applePosX -eq $x) {
-            if($applePosX -eq $playArea) {
-                $applePosX = $applePosX - 1
-            }
-            if($applePosX -eq 1) {
-                $applePosX = $applePosX + 1
+                $locationIsEmpty = $true
             }
         }
-        if($applePosY -eq $y) {
-            if($applePosY -eq $playArea) {
-                $applePosY = $applePosY - 1
-            }
-            if($applePosY -eq 1) {
-                $applePosY = $applePosY + 1
-            }
-        }
-        # don't let the apple spawn in any of the tail positions. if it tries to, move it
-        for($e=0;$e -le $tailMax;$e++) {
-            if($applePosX -eq $global:tailPosX[$e]) {
-                if($applePosX -eq $playArea) {
-                    $applePosX = $applePosX - 1
-                }
-                if($applePosX -eq 1) {
-                    $applePosX = $applePosX + 1
-                }
-            }
-            if($applePosY -eq $global:tailPosY[$e]) {
-                if($applePosY -eq $playArea) {
-                    $applePosY = $applePosY - 1
-                }
-                if($applePosX -eq 1) {
-                    $applePosY = $applePosY + 1
-                }
-            }
-        }
-        #>
 
+        
     # if we're here, then we've spawned the apple. make it edible
     $global:appleIsSpawned = 1
     }
@@ -351,7 +302,7 @@ while(1 -eq 1) {
     board -x $headPosX -y $headPosY
 
     # the new version plays way too fast
-    sleep -Milliseconds 50
+    sleep -Milliseconds $speed
     $frameCounter++
 
 
