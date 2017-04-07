@@ -187,12 +187,31 @@ while(1 -eq 1) {
             $applePosX = (Get-Random -min 1 -max $playArea)
             $applePosY = (Get-Random -min 1 -max $playArea)
 
+            <# multidimensional array descr
+               eg, we try spawning $applePosX=6 and $applePosY=9, but $global:tailPosX contains a 6 in the same index that $global:tailPosY contains a 9.
+               we write tail symbols "o" to $multi for each x and y coord of the tailPosX/Y combined.
+               eg $multi[6,9] = "o", meaning this location on the board is not empty and we cannot spawn a new object here.
+            #>
+
+            # determine how big the multi array should be (exclude all the 0 positions, no need for them
+            $multiSize = ($playArea * $playArea)
+
+            # create the multi
+            $multi = New-Object 'object[,]' $multiSize,$multiSize
+
+            # populate the multi
+            for($rrr=0;$rrr -le $multiSize;$rrr++) {
+                $multi[$global:tailPosX[$rrr],$global:tailPosY[$rrr]] = "o"
+            }
+
+            # if we try spawning the apple in the head            
             if(($applePosX -eq $headPosX) -and ($applePosY -eq $headPosY)) {
-                # location is empty
                 $locationIsEmpty = $false
             }
-            # XYZ
-            # be creative...
+            # if we try spawning the apple in any of the enabled tail positions
+            elseif($multi[$applePosX,$applePosY] -eq "o") {
+                $locationIsEmpty = $false
+            }
             else {
                 $locationisEmpty = $true
             }
