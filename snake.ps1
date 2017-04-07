@@ -1,7 +1,7 @@
 # customizable values
-$debug = 0
-$boardWidth = 20
-$speed = 50   # controls sleep by milliseconds. the larger the number, the slower the speed
+$debug =                      0
+$boardWidth =                 20
+$speed =                      50   # controls sleep by milliseconds. the larger the number, the slower the speed
 
 # definitions
 $playArea =                   $boardWidth - 2   # - 1 for each of the vertical sides of the board (always 2)
@@ -64,20 +64,19 @@ function board {
     # receive the newest x/y positions of the head
     param([int]$x, [int]$y)
 
-    # for debugging
     # anything in this section should be used to define the $offset
     # ---------
+    $offset = 0   # $offset manages where we begin drawing the board. we increase offset for every row used in the header of the game. we'll start drawing the board below this offset
     Write-Buffer $frameCounter 0 0
+    $offset++
     $tempString = "score: " + $score
     Write-Buffer $tempString 0 1
+    $offset++
     $tempString = "number of tails: " + $global:numOfTails
     Write-Buffer $tempString 0 2
+    $offset++
     # ---------
 
-    # offset where we begin drawing the board. since above we are setting three header elements, set $offset = 3. we'll start drawing the board below this offset
-    $offset = 3
-
-    # draw the board loop (checks for point score, determines object postions, ect)
     # evaluate each row of the board, one at a time
     for($i=0;$i -le $playArea;$i++) {
 
@@ -98,22 +97,20 @@ function board {
 
         }
 
-        # this is a new method for determining which objects exist in a row and drawing them. the old way was difficult to understand and redundant. this takes much less effort to accomplish the same goal
-
-        # create a temp array for all objects in the row
-        $objectsInRow = @(" ") * ($playArea + 2)   # instead of $null, use " ". we'll just overwrite spaces with any objects we find as we find them. +2 to accomodate the left and right border padding
+        # create an array to represent the row. contains all spaces, we'll overwrite spaces with objects in a moment
+        $objectsInRow = @(" ") * ($playArea + 2)   # +2 to accomodate the left and right border padding
 
         # pad the row with the game border
         $objectsInRow[0] = "#"
         $objectsInRow[$playArea+1] = "#"
 
-        # if an object exists in the current row (Y), place it in the array (row) using the object's X position (overwritting spaces as needed)
+        # if an object exists in the current row (Y), place it in the array (row) using the object's X position
 
         # add the head, if it exists
         if($y -eq $i) {
             $objectsInRow[$x] = "X"
-
         }
+
         # add the apple, if it exists
         if($applePosY -eq $i) {
             $objectsInRow[$applePosX] = "@"
@@ -129,7 +126,7 @@ function board {
         # save the formatted row as $output
         $output = -join $objectsInRow   # "-join" prints the array on one line
 
-        # if we're on the first row, set the output to the top border
+        # if we're on the first row, output the top border
         if($i -eq 0) {
             $output = $borderTopBottom
         }
@@ -142,11 +139,11 @@ function board {
     # draw board bottom now that we're done looping through the playArea
     Write-Buffer $borderTopBottom 0 ($playArea + $offset + 1)   # + 1 because of the top border
 
-    # detect game over (hit tail or border)
+    # detect game over (player hits the tail or the game border)
     # hit the tail (this is only possible while tail[3] or higher is enabled)
     for($a=3;$a -le $tailMax;$a++) {
         if(($x -eq $global:tailPosX[$a]) -and ($y -eq $global:tailPosY[$a])) {
-            write-buffer "game over - you hit your tail!" 0 ($playArea + 10)   # I chose this value at random. I just happen to know that it is below the board. should use one of the defined board size variables to set this instead...
+            write-buffer "game over - you hit your tail!" 0 ($playArea + 10)
             exit
         }
     }
@@ -157,7 +154,7 @@ function board {
         exit
     }
 
-    # update the number of tails
+    # update the number of tails (only used for reporting purposes)
     $global:numOfTails = $global:tailExists.IndexOf(0)
 
 }
@@ -179,7 +176,7 @@ while(1 -eq 1) {
             $applePosX = (Get-Random -min 1 -max $playArea)
             $applePosY = (Get-Random -min 1 -max $playArea)
 
-            <# multidimensional array descr
+            <# multidimensional array description
                eg, we try spawning $applePosX=6 and $applePosY=9, but $global:tailPosX contains a 6 in the same index that $global:tailPosY contains a 9.
                we write tail symbols "o" to $multi for each x and y coord of the tailPosX/Y combined.
                eg $multi[6,9] = "o", meaning this location on the board is not empty and we cannot spawn a new object here.
