@@ -1,7 +1,7 @@
 # customizable values
 $debug =                      0
 $boardWidth =                 20
-$speed =                      50   # controls sleep by milliseconds. the larger the number, the slower the speed
+$speed =                      40   # controls sleep by milliseconds. the larger the number, the slower the speed
 
 # definitions
 $playArea =                   $boardWidth - 2   # - 1 for each of the vertical sides of the board (always 2)
@@ -56,6 +56,20 @@ function Write-Buffer ([string] $str, [int] $x = 0, [int] $y = 0) {
             Write-Host -Object $str -NoNewline
             [console]::setcursorposition(0,$saveY)
       }
+}
+
+# for cleaning up the console better when game over
+function gameOver {
+
+    write-buffer "game over - you hit $global:whatDidIHit!" 0 ($playArea + 10)
+    # send blank lines until we're below everything we've drawn with write-buffer. makes the end experience of the game nicer, no overlap with the returned console position an old things drawn to the console
+    for($h=0;$h -le ($playArea + 12);$h++) {
+
+        write-host ""
+            
+    }
+    exit
+
 }
 
 # draws the board
@@ -147,15 +161,19 @@ function board {
     # hit the tail (this is only possible while tail[3] or higher is enabled)
     for($a=3;$a -le $tailMax;$a++) {
         if(($x -eq $global:tailPosX[$a]) -and ($y -eq $global:tailPosY[$a])) {
-            write-buffer "game over - you hit your tail!" 0 ($playArea + 10)
-            exit
+            #write-buffer "game over - you hit your tail!" 0 ($playArea + 10)
+            #exit
+            $global:whatDidIHit = "your tail"
+            gameOver
         }
     }
 
     # hit the border
     if(($x -eq 0) -or ($x -eq ($playArea + 1)) -or ($y -eq 0) -or ($y -eq ($playArea + 1))) {
-        write-buffer "game over - you hit the game border!" 0 ($playArea + 10)
-        exit
+        #write-buffer "game over - you hit the game border!" 0 ($playArea + 10)
+        #exit
+        $global:whatDidIHit = "the game border"
+        gameOver
     }
 
     # update the number of tails (only used for reporting purposes)
