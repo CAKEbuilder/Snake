@@ -72,14 +72,10 @@ function board {
     Write-Buffer $tempString 0 1
     $tempString = "number of tails: " + $global:numOfTails
     Write-Buffer $tempString 0 2
-    $tempString = "headPosX: " + $headPosX
-    Write-Buffer $tempString 0 3
-    $tempString = "headPosY: " + $headPosY
-    Write-Buffer $tempString 0 4
     # ---------
 
     # offset where we begin drawing the board. since above we are setting three header elements, set $offset = 3. we'll start drawing the board below this offset
-    $offset = 5
+    $offset = 3
 
     # draw the board loop (checks for point score, determines object postions, ect)
     # evaluate each row of the board, one at a time
@@ -172,11 +168,11 @@ clear
 # play! get user input, update the position of objects, call the board drawing function using new player coords
 while(1 -eq 1) {
 
-    # apple
     # spawn the apple in a random, unused location
     if($global:appleIsSpawned -eq 0) {
 
         # loop until we've found an empty location
+        # this might get very bogged down towards the end of a long game. another solution would be to keep track of all empty spaces and choose from the available ones at random
         $locationIsEmpty = $false
         while($locationIsEmpty -eq $false) {
 
@@ -212,7 +208,6 @@ while(1 -eq 1) {
             else {
                 $locationisEmpty = $true
             }
-
         }
         
     # if we're here, then we've spawned the apple. make it edible
@@ -236,7 +231,6 @@ while(1 -eq 1) {
                     $global:canMoveRight = $true
                     # restrict movement in the opposite direction
                     $global:canMoveDown  = $false
-
                 }
             }
             LeftArrow {
@@ -270,11 +264,12 @@ while(1 -eq 1) {
                 }
             }
             Spacebar {
-                clear
-                write-host "game has been paused!"
-                write-host ""
-                pause
-                clear
+                $tempString = "game has been paused! press any key to resume"
+                write-buffer $tempString 0 ($playArea + 5)
+                [void][System.Console]::ReadKey()
+                # clean the pause line
+                $tempString = " " * $tempString.Length
+                write-buffer $tempString 0 ($playArea + 5)
             }
         }
     } 
