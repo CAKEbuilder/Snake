@@ -1,9 +1,5 @@
-
-# bugs
-#   -apple still spawning in tail
-
 # customizable values
-$debug                   = 1
+$debug                   = 0
 $boardWidth              = 20
 $speed                   = 50   # controls sleep by milliseconds. the larger the number, the slower the speed
 
@@ -212,15 +208,16 @@ while(1 -eq 1) {
             elseif($multi[$applePosX,$applePosY] -eq "o") {
                 $locationIsEmpty = $false
             }
+            # otherwise, this location is empty
             else {
                 $locationisEmpty = $true
             }
 
         }
-
         
     # if we're here, then we've spawned the apple. make it edible
     $global:appleIsSpawned = 1
+
     }
 
     # get the player's input
