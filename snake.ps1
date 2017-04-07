@@ -61,12 +61,11 @@ function Write-Buffer ([string] $str, [int] $x = 0, [int] $y = 0) {
 # for cleaning up the console better when game over
 function gameOver {
 
-    write-buffer "game over - you hit $global:whatDidIHit!" 0 ($playArea + 10)
+    write-buffer "game over - you hit $whatDidIHit!" 0 ($playArea + 10)
+
     # send blank lines until we're below everything we've drawn with write-buffer. makes the end experience of the game nicer, no overlap with the returned console position an old things drawn to the console
     for($h=0;$h -le ($playArea + 12);$h++) {
-
         write-host ""
-            
     }
     exit
 
@@ -161,18 +160,14 @@ function board {
     # hit the tail (this is only possible while tail[3] or higher is enabled)
     for($a=3;$a -le $tailMax;$a++) {
         if(($x -eq $global:tailPosX[$a]) -and ($y -eq $global:tailPosY[$a])) {
-            #write-buffer "game over - you hit your tail!" 0 ($playArea + 10)
-            #exit
-            $global:whatDidIHit = "your tail"
+            $whatDidIHit = "your tail"
             gameOver
         }
     }
 
     # hit the border
     if(($x -eq 0) -or ($x -eq ($playArea + 1)) -or ($y -eq 0) -or ($y -eq ($playArea + 1))) {
-        #write-buffer "game over - you hit the game border!" 0 ($playArea + 10)
-        #exit
-        $global:whatDidIHit = "the game border"
+        $whatDidIHit = "the game border"
         gameOver
     }
 
