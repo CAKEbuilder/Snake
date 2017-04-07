@@ -98,33 +98,33 @@ function board {
         }
 
         # create an array to represent the row. contains all spaces, we'll overwrite spaces with objects in a moment
-        $objectsInRow = @(" ") * ($playArea + 2)   # +2 to accomodate the left and right border padding
+        $row = @(" ") * ($playArea + 2)   # +2 to accomodate the left and right border padding
 
         # pad the row with the game border
-        $objectsInRow[0] = "#"
-        $objectsInRow[$playArea+1] = "#"
+        $row[0] = "#"
+        $row[$playArea+1] = "#"
 
         # if an object exists in the current row (Y), place it in the array (row) using the object's X position
 
         # add the head, if it exists
         if($y -eq $i) {
-            $objectsInRow[$x] = "X"
+            $row[$x] = "X"
         }
 
         # add the apple, if it exists
         if($applePosY -eq $i) {
-            $objectsInRow[$applePosX] = "@"
+            $row[$applePosX] = "@"
         }
 
         # add any tails that exist
         for($d=0;$d -lt $tailMax;$d++) {
             if($global:tailPosY[$d] -eq $i) {
-                $objectsInRow[$global:tailPosX[$d]] = "o"
+                $row[$global:tailPosX[$d]] = "o"
             }
         }
 
         # save the formatted row as $output
-        $output = -join $objectsInRow   # "-join" prints the array on one line
+        $output = -join $row   # "-join" prints the array on one line
 
         # if we're on the first row, output the top border
         if($i -eq 0) {
