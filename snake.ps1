@@ -98,7 +98,11 @@ function board {
         }
 
         # create an array to represent the row. contains all spaces, we'll overwrite spaces with objects in a moment
+<<<<<<< HEAD
         $row = @(" ") * ($playArea + 2)   # +2 to accomodate the left and right border padding
+=======
+        $objectsInRow = @(" ") * ($playArea + 2)   # +2 to accomodate the left and right border padding
+>>>>>>> 510cf4dcb95434f463d66d315e49c9b81713557f
 
         # pad the row with the game border
         $row[0] = "#"
@@ -108,7 +112,11 @@ function board {
 
         # add the head, if it exists
         if($y -eq $i) {
+<<<<<<< HEAD
             $row[$x] = "X"
+=======
+            $objectsInRow[$x] = "X"
+>>>>>>> 510cf4dcb95434f463d66d315e49c9b81713557f
         }
 
         # add the apple, if it exists
