@@ -1,9 +1,6 @@
 
-# bugs (keep it brief)
-#   -being told I hit my tail when it doesn't look like I am.
-#   -apple still spawning in tail  
-#   test
-
+# bugs
+#   -apple still spawning in tail
 
 # customizable values
 $debug                   = 1
@@ -123,6 +120,7 @@ function board {
         # add the head, if it exists
         if($y -eq $i) {
             $objectsInRow[$x] = "X"
+
         }
         # add the apple, if it exists
         if($applePosY -eq $i) {
@@ -181,7 +179,7 @@ while(1 -eq 1) {
     # apple
     # spawn the apple in a random, unused location
     if($global:appleIsSpawned -eq 0) {
-       
+
         # loop until we've found an empty location
         $locationIsEmpty = $false
         while($locationIsEmpty -eq $false) {
@@ -189,27 +187,16 @@ while(1 -eq 1) {
             $applePosX = (Get-Random -min 1 -max $playArea)
             $applePosY = (Get-Random -min 1 -max $playArea)
 
-            # moving this into the while. xPositions was originaly developed incorrectly, using headPosX. need to use applePosX ya genius... moving here since applePosX needs to be set first            
-            # find where headPosX exists in the tailPosX array. we'll use these values to check the matching Y coords
-            $xPositions = (0..($global:tailPosX.Count-1)) | where {$global:tailPosX[$_] -eq $applePosX}
-
             if(($applePosX -eq $headPosX) -and ($applePosY -eq $headPosY)) {
+                # location is empty
+                $locationIsEmpty = $false
             }
-            # if $xPositions contains at least one value, then some tailPosX values match applePosX. check the corresponding Y values
-            elseif($xPositions.Count -gt 0) {
-                # check each tailPosY for values paired with tailPosX
-                foreach($pos in $xPositions) {
-                    if($applePosY -eq $global:tailPosY[$pos]) {
-                        # don't need anything here. should write the inside of the foreach() differently
-                    }
-                    else {
-                        $locationIsEmpty = $true
-                    }
-                }
-            }
+            # XYZ
+            # be creative...
             else {
-                $locationIsEmpty = $true
+                $locationisEmpty = $true
             }
+
         }
 
         
@@ -265,6 +252,13 @@ while(1 -eq 1) {
                     $global:canMoveDown  = $true
                     $global:canMoveUp    = $false
                 }
+            }
+            Spacebar {
+                clear
+                write-host "game has been paused!"
+                write-host ""
+                pause
+                clear
             }
         }
     } 
