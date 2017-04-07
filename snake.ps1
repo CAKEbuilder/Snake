@@ -301,7 +301,6 @@ while(1 -eq 1) {
         $headPosX = $headPosX + $playerInputX
     }
     
-    # I don't really get this
     $global:tailPosY[0] = $headPosY
     $headPosY = $headPosY + $playerInputY
   
