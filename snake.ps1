@@ -1,39 +1,39 @@
 # customizable values
-$debug                   = 0
-$boardWidth              = 20
-$speed                   = 50   # controls sleep by milliseconds. the larger the number, the slower the speed
+$debug = 0
+$boardWidth = 20
+$speed = 50   # controls sleep by milliseconds. the larger the number, the slower the speed
 
 # definitions
-$playArea                = $boardWidth - 2   # - 1 for each of the vertical sides of the board (always 2)
-$borderTopBottom	     = "#" * $boardWidth
-$frameCounter 		     = 1   # would be cool to calculate FPS too
-$playerInputX 		     = 1   # we init at 1 instead of 0 to start the game with the snake moving right
-$playerInputY 		     = 0
-$headPosX 		         = 8
-$headPosY 		         = 1
-$applePosX 			     = 0
-$applePosY 			     = 0
-$applePointValue 	     = 5
-$tailMax 			     = ($playArea * $playArea)   # set the array length to the max theoretical tails that can be drawn on the board
-$global:score 		     = 0
-$global:appleIsSpawned   = 0
-$global:canMoveLeft 	 = $false   # since we init the game with the snake moving right
-$global:canMoveRight 	 = $true
-$global:canMoveUp 		 = $true
-$global:canMoveDown 	 = $true
-$global:tailExists       = @(0) * $tailMax   # keeps track of which tails exist
-$global:tailExists[0]    = 1   # init the first three tails
-$global:tailExists[1]    = 1
-$global:tailExists[2]    = 1
-$global:tailPosX         = @(0) * $tailMax
-$global:tailPosY         = @(0) * $tailMax
-$global:tailPosX[0] 	 = $headPosX - 1   # init the first three tail positions
-$global:tailPosY[0]      = $headPosY
-$global:tailPosX[1]      = $global:tailPosX[0] - 1
-$global:tailPosY[1]      = $global:tailPosY[0]
-$global:tailPosX[2] 	 = $global:tailPosX[1] - 1
-$global:tailPosY[2] 	 = $global:tailPosY[1]
-$global:numOfTails       = $global:tailExists.IndexOf(0)
+$playArea =                   $boardWidth - 2   # - 1 for each of the vertical sides of the board (always 2)
+$borderTopBottom =            "#" * $boardWidth
+$frameCounter =               1   # would be cool to calculate FPS too
+$playerInputX =               1   # we init at 1 instead of 0 to start the game with the snake moving right
+$playerInputY =               0
+$headPosX =                   8
+$headPosY =                   1
+$applePosX =                  0
+$applePosY =                  0
+$applePointValue =            5
+$tailMax =                    ($playArea * $playArea)   # set the array length to the max theoretical tails that can be drawn on the board
+$global:score =               0
+$global:appleIsSpawned =      0
+$global:canMoveLeft =         $false   # since we init the game with the snake moving right
+$global:canMoveRight =        $true
+$global:canMoveUp =           $true
+$global:canMoveDown =         $true
+$global:tailExists =          @(0) * $tailMax   # keeps track of which tails exist
+$global:tailExists[0] =       1   # init the first three tails
+$global:tailExists[1] =       1
+$global:tailExists[2] =       1
+$global:tailPosX =            @(0) * $tailMax
+$global:tailPosY =            @(0) * $tailMax
+$global:tailPosX[0] =         $headPosX - 1   # init the first three tail positions
+$global:tailPosY[0] =         $headPosY
+$global:tailPosX[1] =         $global:tailPosX[0] - 1
+$global:tailPosY[1] =         $global:tailPosY[0]
+$global:tailPosX[2] =         $global:tailPosX[1] - 1
+$global:tailPosY[2] =         $global:tailPosY[1]
+$global:numOfTails =          $global:tailExists.IndexOf(0)
 
 
 # 1 = on. set "$breakHere = 1" anywhere you'd like to break
@@ -301,14 +301,13 @@ while(1 -eq 1) {
         $headPosX = $headPosX + $playerInputX
     }
     
+    # update Y
     $global:tailPosY[0] = $headPosY
     $headPosY = $headPosY + $playerInputY
   
     board -x $headPosX -y $headPosY
 
-    # the new version plays way too fast
     sleep -Milliseconds $speed
     $frameCounter++
-
 
 }
