@@ -52,6 +52,7 @@ else {
 
 # write output to the screen. used to Write/Clear-Host. this prevents the board from "flashing"
 function Write-Buffer ([string] $str, [int] $x = 0, [int] $y = 0) {
+
       if($x -ge 0 -and $y -ge 0 -and $x -le [Console]::WindowWidth -and $y -le [Console]::WindowHeight) {
             $saveY = [console]::CursorTop
             $offY = [console]::WindowTop       
@@ -59,6 +60,7 @@ function Write-Buffer ([string] $str, [int] $x = 0, [int] $y = 0) {
             Write-Host -Object $str -NoNewline
             [console]::setcursorposition(0,$saveY)
       }
+
 }
 
 # for cleaning up the console better when game over
@@ -162,7 +164,9 @@ function board {
         }
 
         # write the output
+        # this is causing a huge performance hit on some machines. check the function
         Write-Buffer $output 0 ($i + $offset)
+
         
     }
 
