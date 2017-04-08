@@ -15,6 +15,7 @@ $applePosX =                  0
 $applePosY =                  0
 $applePointValue =            5
 $tailMax =                    ($playArea * $playArea)   # set the array length to the max theoretical tails that can be drawn on the board
+$originalCursorState =        [console]::CursorVisible
 $global:score =               0
 $global:appleIsSpawned =      0
 $global:canMoveLeft =         $false   # since we init the game with the snake moving right
@@ -35,6 +36,8 @@ $global:tailPosX[2] =         $global:tailPosX[1] - 1
 $global:tailPosY[2] =         $global:tailPosY[1]
 $global:numOfTails =          $global:tailExists.IndexOf(0)
 
+# make sure the cursor is off. when it's on, the game looks like its blinking/flashing
+[console]::CursorVisible = $false
 
 # 1 = on. set "$breakHere = 1" anywhere you'd like to break
 if($debug -eq 1) {
@@ -61,12 +64,22 @@ function Write-Buffer ([string] $str, [int] $x = 0, [int] $y = 0) {
 # for cleaning up the console better when game over
 function gameOver {
 
-    write-buffer "game over - you hit $whatDidIHit!" 0 ($playArea + 10)
-
+    # if we set $whatDidIHit, tell the player what happened.
+    if($whatDidIHit) {
+        write-buffer "game over - you hit $whatDidIHit!" 0 ($playArea + 10)
+    }
+    # must have received ESC from the player
+    else {
+        write-buffer "player quit" 0 ($playArea + 10)   # why isn't the "p" in player showing?
+    }
+        
     # send blank lines until we're below everything we've drawn with write-buffer. makes the end experience of the game nicer, no overlap with the returned console position an old things drawn to the console
     for($h=0;$h -le ($playArea + 12);$h++) {
         write-host ""
     }
+
+    # reset the cursor to its state prior to playing
+    [console]::CursorVisible = $originalCursorState
     exit
 
 }
@@ -85,7 +98,7 @@ function board {
     $tempString = "score: " + $score
     Write-Buffer $tempString 0 1
     $offset++
-    $tempString = "number of tails: " + $global:numOfTails
+    $tempString = "tail size: " + $global:numOfTails
     Write-Buffer $tempString 0 2
     $offset++
     # ---------
@@ -279,11 +292,17 @@ while(1 -eq 1) {
             }
             Spacebar {
                 $tempString = "game has been paused! press any key to resume"
-                write-buffer $tempString 0 ($playArea + 5)
+                write-buffer $tempString 0 ($playArea + $offset + 5)
+                
+                # pause and wait for any key
                 [void][System.Console]::ReadKey()
-                # clean the pause line
+                
+                # overwrite the pause message
                 $tempString = " " * $tempString.Length
-                write-buffer $tempString 0 ($playArea + 5)
+                write-buffer $tempString 0 ($playArea + $offset + 5)
+            }
+            Escape {
+                gameOver
             }
         }
     } 
