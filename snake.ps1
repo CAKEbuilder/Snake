@@ -1,3 +1,4 @@
+# before we do anything, disallow running from ISE
 if($psISE) {
     Write-Host "can't run the game within ISE"
     exit
