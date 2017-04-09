@@ -1,3 +1,8 @@
+if($psISE) {
+    Write-Host "can't run the game within ISE"
+    exit
+}
+
 # customizable values
 $debug =                      0
 $boardWidth =                 20
