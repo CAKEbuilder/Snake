@@ -59,13 +59,8 @@ else {
 # write output to the screen. used to Write/Clear-Host. this prevents the board from "flashing"
 function Write-Buffer ([string] $str, [int] $x = 0, [int] $y = 0) {
 
-      if($x -ge 0 -and $y -ge 0 -and $x -le [Console]::WindowWidth -and $y -le [Console]::WindowHeight) {
-            $saveY = [console]::CursorTop
-            $offY = [console]::WindowTop       
-            [console]::setcursorposition($x,$offY+$y)
-            Write-Host -Object $str -NoNewline
-            [console]::setcursorposition(0,$saveY)
-      }
+    [console]::setcursorposition($x,$y)
+    Write-Host $str -NoNewline
 
 }
 
@@ -82,9 +77,11 @@ function gameOver {
     }
         
     # send blank lines until we're below everything we've drawn with write-buffer. makes the end experience of the game nicer, no overlap with the returned console position an old things drawn to the console
-    for($h=0;$h -le ($playArea + 12);$h++) {
+    <#
+    for($h=0;$h -le ($playArea);$h++) {
         write-host ""
     }
+    #>
 
     # reset the cursor to its state prior to playing
     [console]::CursorVisible = $originalCursorState
